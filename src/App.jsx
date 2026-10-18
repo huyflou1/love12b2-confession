@@ -5,6 +5,7 @@ import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import RandomConfessionWidget from './components/RandomConfessionWidget.jsx';
+import ChatBox from './components/ChatBox.jsx';
 import { CUTE_ICONS, DEFAULT_SITE_CONTENT, MOCK_CONFESSIONS, emptyReactions, seedReactions } from './data/mockData.js';
 import {
   addCommentOnline,
@@ -405,6 +406,7 @@ export default function App() {
             />
 
             <RandomConfessionWidget />
+            <ChatBox />
           </div>
 
           {/* ===== Cột phải: Feed masonry ===== */}

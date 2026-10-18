@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { PAGE_SIZE, paginate } from '../utils/pagination.js';
+import { parseHashTarget } from '../utils/shortlink.js';
 import { TOPICS } from '../data/mockData.js';
 import ConfessionCard from './ConfessionCard.jsx';
 
@@ -11,7 +13,7 @@ const FILTERS = [
 
 const HEADER_META = {
   top: {
-    title: '🏆 Top 5 confession nhiều tim nhất',
+    title: '🏆 Confession nhiều tim nhất',
     subtitle: 'Những lời chia sẻ được cả lớp vỗ về nhiều nhất 💗',
   },
   latest: {
@@ -26,10 +28,12 @@ const HEADER_META = {
 
 /**
  * ConfessionFeed — lưới Masonry (1 → 2 → 3 cột tuỳ màn hình).
- * Mặc định hiển thị 5 confession nhiều tim nhất, có tab Bài viết mới nhất & bộ lọc chủ đề.
+ * Phân trang 20 bài cho mọi bộ lọc; giữ nguyên deep link đến bài viết.
  */
 export default function ConfessionFeed({ confessions, onToggleHeart, onReact, onUpdateContent, onAddComment }) {
   const [filter, setFilter] = useState('top');
+  const [page, setPage] = useState(1);
+  const sectionRef = useRef(null);
 
   const visible = useMemo(() => {
     const list = [...confessions];
@@ -38,8 +42,7 @@ export default function ConfessionFeed({ confessions, onToggleHeart, onReact, on
         .sort((a, b) => {
           if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
           return (b.hearts || 0) - (a.hearts || 0);
-        })
-        .slice(0, 5);
+        });
     }
     if (filter === 'latest') {
       return list.sort(
@@ -54,6 +57,43 @@ export default function ConfessionFeed({ confessions, onToggleHeart, onReact, on
     return byHearts.filter((c) => c.topic === filter);
   }, [confessions, filter]);
 
+  const pagination = paginate(visible, page);
+  useEffect(() => {
+    setPage(pagination.page);
+  }, [pagination.page]);
+
+  useEffect(() => {
+    const focusTarget = () => {
+      const target = parseHashTarget();
+      if (!target) return;
+      const index = visible.findIndex((item) => String(item.id) === String(target.id));
+      if (index >= 0) {
+        const targetPage = Math.floor(index / PAGE_SIZE) + 1;
+        setPage(targetPage);
+      } else if (confessions.some((item) => String(item.id) === String(target.id))) {
+        setFilter('all');
+      }
+    };
+    focusTarget();
+    window.addEventListener('hashchange', focusTarget);
+    return () => window.removeEventListener('hashchange', focusTarget);
+  }, [confessions, visible]);
+
+  useEffect(() => {
+    const target = parseHashTarget();
+    if (!target) return undefined;
+    const timer = setTimeout(() => {
+      const element = document.getElementById(`confession-${target.id}`);
+      element?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [filter, pagination.page]);
+
+  const changePage = (next) => {
+    setPage(next);
+    sectionRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  };
+
   const activeTopic = TOPICS.find((t) => t.id === filter);
   const headerInfo = HEADER_META[filter] || {
     title: `${activeTopic?.emoji || '💖'} Chủ đề: ${activeTopic?.label || ''}`,
@@ -61,7 +101,7 @@ export default function ConfessionFeed({ confessions, onToggleHeart, onReact, on
   };
 
   return (
-    <section>
+    <section ref={sectionRef} className="scroll-mt-24">
       {/* Tiêu đề + bộ lọc */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -76,7 +116,7 @@ export default function ConfessionFeed({ confessions, onToggleHeart, onReact, on
           {FILTERS.map((f) => (
             <button
               key={f.id}
-              onClick={() => setFilter(f.id)}
+              onClick={() => { setFilter(f.id); setPage(1); }}
               className={`chip !px-3 !py-1 !text-xs ${
                 filter === f.id
                   ? 'border-transparent bg-gradient-to-r from-violet-500 to-sky-400 text-white shadow-candy'
@@ -96,12 +136,12 @@ export default function ConfessionFeed({ confessions, onToggleHeart, onReact, on
           <p className="mt-2 font-semibold">Chưa có confession nào ở chủ đề này…</p>
         </div>
       ) : (
-        <div className="masonry columns-1 gap-5 md:columns-2 xl:columns-3">
-          {visible.map((c, i) => (
+        <div key={`${filter}-${pagination.page}`} className="feed-page masonry columns-1 gap-5 md:columns-2 xl:columns-3">
+          {pagination.items.map((c, i) => (
             <ConfessionCard
               key={c.id}
               confession={c}
-              index={i + 1}
+              index={pagination.offset + i + 1}
               rankBadge={filter === 'top'}
               onToggleHeart={onToggleHeart}
               onReact={onReact}
@@ -110,6 +150,24 @@ export default function ConfessionFeed({ confessions, onToggleHeart, onReact, on
             />
           ))}
         </div>
+      )}
+      {visible.length > 0 && (
+        <nav aria-label="Phân trang confession" className="glass-soft mt-4 flex flex-wrap items-center justify-center gap-2 p-3">
+          <p aria-live="polite" className="w-full text-center text-xs text-slate-500">
+            {pagination.offset + 1}–{Math.min(pagination.offset + PAGE_SIZE, visible.length)} / {visible.length} confession · Trang {pagination.page}/{pagination.totalPages}
+          </p>
+          <button type="button" className="btn-ghost disabled:opacity-40" disabled={pagination.page === 1} onClick={() => changePage(pagination.page - 1)}>← Trước</button>
+          {Array.from({ length: pagination.totalPages }, (_, index) => index + 1)
+            .filter((number) => number === 1 || number === pagination.totalPages || Math.abs(number - pagination.page) <= 1)
+            .map((number, index, pages) => (
+              <span key={number} className="inline-flex items-center gap-2">
+                {index > 0 && number - pages[index - 1] > 1 && <span aria-hidden="true">…</span>}
+                <button type="button" aria-label={`Trang ${number}`} aria-current={pagination.page === number ? 'page' : undefined}
+                  className={pagination.page === number ? 'btn-gradient !px-3 !py-2 text-sm' : 'btn-ghost'} onClick={() => changePage(number)}>{number}</button>
+              </span>
+            ))}
+          <button type="button" className="btn-ghost disabled:opacity-40" disabled={pagination.page === pagination.totalPages} onClick={() => changePage(pagination.page + 1)}>Sau →</button>
+        </nav>
       )}
     </section>
   );

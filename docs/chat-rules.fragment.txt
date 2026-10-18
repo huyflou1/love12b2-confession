@@ -1,0 +1,18 @@
+// Merge INSIDE match /databases/{database}/documents in existing Firestore rules.
+// Public guest chat: no verified identity, anti-spam, or user ownership guarantees.
+// A broad existing allow rule can override these restrictions: audit all matches.
+match /chatMessages/{messageId} {
+  allow read: if true;
+  allow create: if request.resource.data.keys().hasOnly(['author', 'content', 'createdAt', 'expiresAt'])
+    && request.resource.data.author is string
+    && request.resource.data.author.size() > 0
+    && request.resource.data.author.size() <= 30
+    && request.resource.data.content is string
+    && request.resource.data.content.size() > 0
+    && request.resource.data.content.size() <= 500
+    && request.resource.data.createdAt == request.time
+    && request.resource.data.expiresAt is timestamp
+    && request.resource.data.expiresAt >= request.time + duration.value(15, 'd') - duration.value(5, 'm')
+    && request.resource.data.expiresAt <= request.time + duration.value(15, 'd') + duration.value(5, 'm');
+  allow update, delete: if false;
+}

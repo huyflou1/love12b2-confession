@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes feed-page-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.feed-page { animation: feed-page-enter 240ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  .feed-page { animation: none; }
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;

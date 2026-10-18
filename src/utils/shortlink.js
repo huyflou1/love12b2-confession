@@ -29,7 +29,9 @@ export const decodeId = (code) => {
 /** Link ngắn của 1 confession, vd: https://love12b2.app/#c/1d */
 export const buildShortUrl = (id) => {
   const base = `${window.location.origin}${window.location.pathname}`;
-  return `${base}#c/${encodeId(id)}`;
+  return typeof id === 'number'
+    ? `${base}#c/${encodeId(id)}`
+    : `${base}#confession-${encodeURIComponent(String(id))}`;
 };
 
 /** Đọc short-code từ hash hiện tại của trình duyệt (hỗ trợ cả link cũ #confession-<id>) */
@@ -40,7 +42,10 @@ export const parseHashTarget = () => {
     const id = decodeId(short[1]);
     return id === null ? null : { id, shortCode: short[1] };
   }
-  const legacy = hash.match(/^#confession-(\d+)$/);
-  if (legacy) return { id: Number(legacy[1]), shortCode: encodeId(Number(legacy[1])) };
+  const legacy = hash.match(/^#confession-(.+)$/);
+  if (legacy) {
+    try { return { id: decodeURIComponent(legacy[1]), shortCode: null }; }
+    catch { return null; }
+  }
   return null;
 };

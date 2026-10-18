@@ -58,4 +58,23 @@ src/
 - **Bộ Lọc Từ Khóa Văn Minh**: chặn SĐT/email/địa chỉ 🚫, cảnh báo từ toxic ⚠️
 - Responsive: 1 cột (mobile) → sidebar + Masonry 3 cột (desktop)
 - Demo lưu dữ liệu vào `localStorage` trình duyệt (không gửi lên server — đúng cam kết ẩn danh)
-# love12b2-confession
+## Phân trang và chat realtime
+
+- Mọi bộ lọc hiển thị tối đa 20 confession/trang, có nút trước/sau và số trang.
+- Chuyển trang có hiệu ứng nhẹ, cuộn mượt; hỗ trợ reduced motion và link bài viết.
+- Phân trang hiện thực hiện phía client trên toàn bộ confession tải qua realtime (không còn giới hạn 200 bài). Với dữ liệu lớn cần chuyển sang Firestore cursor pagination để giảm lượt đọc.
+- Chatbox nằm dưới widget châm ngôn, đồng bộ 100 tin gần nhất từ collection `chatMessages`. Tin lỗi giữ nguyên bản nháp; không giả lập gửi thành công khi offline.
+- Mỗi tin có `createdAt` (server timestamp) và `expiresAt` (Timestamp sau 15 ngày). UI tự ẩn tin hết hạn; không dùng trình duyệt để xóa dữ liệu máy chủ.
+
+### Bắt buộc cấu hình Firebase trước khi dùng chat production
+
+1. Hợp nhất `docs/chat-rules.fragment.txt` vào Firestore rules hiện tại rồi Publish. Không thay toàn bộ rules bằng fragment. Đây là chat khách công khai, chưa có xác thực danh tính/chống spam; cần Auth/App Check và giới hạn gửi phía server cho production. Kiểm tra không có wildcard rule rộng vô hiệu hóa giới hạn.
+2. Trong Google Cloud Console, chọn project `love12b2-confession` → Firestore database → Time-to-live → Create policy: collection group **chatMessages**, timestamp field **expiresAt**. Chờ policy Active.
+   Hoặc chạy bằng tài khoản có quyền:
+   ```sh
+   gcloud firestore fields ttls update expiresAt --collection-group=chatMessages --enable-ttl --project=love12b2-confession
+   ```
+3. TTL xóa bất đồng bộ, thường trong vòng 24 giờ sau hết hạn, không đảm bảo xóa đúng giây thứ 15 ngày. TTL delete có tính phí; kiểm tra billing/quyền của project. Tài liệu: https://firebase.google.com/docs/firestore/ttl
+4. Cấu hình rules/TTL trên cloud **không tự được triển khai bởi Vite build**. Chưa bật TTL thì dữ liệu chỉ bị ẩn, chưa tự xóa trên server. Đồng hồ máy gửi sai quá 5 phút có thể bị mẫu rules từ chối.
+
+Kiểm tra: mở hai trình duyệt, gửi tin ở một cửa sổ và kiểm tra cửa sổ kia; thử mất mạng/quyền bị từ chối để kiểm tra bản nháp. Với >=21 confession, thử chuyển trang, đổi bộ lọc và mở link bài ở trang sau.

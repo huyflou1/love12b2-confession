@@ -7,7 +7,6 @@ import {
   getDoc,
   getDocs,
   increment,
-  limit,
   onSnapshot,
   orderBy,
   query,
@@ -48,7 +47,7 @@ const toConfession = (snap) => {
 /** Lắng nghe realtime toàn bộ confession (mọi người gửi là mọi máy thấy ngay) */
 export const subscribeConfessions = (onData, onError) => {
   if (!isOnlineMode()) return () => {};
-  const q = query(collection(db, CONFESSIONS), orderBy('createdAt', 'desc'), limit(200));
+  const q = query(collection(db, CONFESSIONS), orderBy('createdAt', 'desc'));
   return onSnapshot(
     q,
     (snap) => onData(snap.docs.map(toConfession)),
