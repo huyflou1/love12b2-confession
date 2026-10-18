@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply font-sans text-slate-700 antialiased;
+  }
+
+  ::selection {
+    @apply bg-fuchsia-200 text-fuchsia-900;
+  }
+
+  /* Thanh cuộn xinh xắn */
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #e879f9, #7dd3fc);
+    border-radius: 999px;
+  }
+}
+
+@layer components {
+  /* Glassmorphism — hiệu ứng kính mờ dùng xuyên suốt trang */
+  .glass {
+    @apply border border-white/70 bg-white/60 shadow-glass backdrop-blur-xl;
+  }
+
+  .glass-card {
+    @apply glass rounded-3xl;
+  }
+
+  .glass-soft {
+    @apply rounded-2xl border border-white/60 bg-white/45 backdrop-blur-lg;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-violet-600 via-fuchsia-500 to-sky-500 bg-clip-text text-transparent;
+  }
+
+  .btn-gradient {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 via-fuchsia-400 to-sky-400 px-5 py-2.5 font-bold text-white shadow-candy transition duration-200 hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-300 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-2xl border border-white/70 bg-white/60 px-3.5 py-2 text-sm font-semibold text-slate-600 backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/90 hover:text-fuchsia-600;
+  }
+
+  .chip {
+    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-bold transition duration-200;
+  }
+
+  .input-cute {
+    @apply w-full rounded-2xl border border-white/80 bg-white/70 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-fuchsia-300 focus:bg-white/90 focus:outline-none focus:ring-2 focus:ring-fuchsia-200;
+  }
+
+  .label-cute {
+    @apply mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500;
+  }
+
+  .divider-heart {
+    @apply h-px w-full bg-gradient-to-r from-transparent via-fuchsia-300/70 to-transparent;
+  }
+}
+
+@layer utilities {
+  /* Masonry grid nhờ CSS columns — đổ card theo dạng lưới so le */
+  .masonry {
+    column-gap: 1.25rem;
+  }
+  .masonry > * {
+    break-inside: avoid;
+    margin-bottom: 1.25rem;
+  }
+}
