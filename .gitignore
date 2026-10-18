@@ -1,18 +1,25 @@
 # dependencies
 node_modules/
+
 # build output
 dist/
 dist-ssr/
+
 # logs
 build.log
 logs/
+
 # editor
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
 # os
 .DS_Store
 Thumbs.db
+
 # env
 .env
 .env.local
+
+# <-- Firebase config: KHÔNG được commit key thật lên GitHub. Mình để README hướng dẫn.

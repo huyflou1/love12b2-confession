@@ -5,6 +5,20 @@ import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import { CUTE_ICONS, DEFAULT_SITE_CONTENT, MOCK_CONFESSIONS, emptyReactions, seedReactions } from './data/mockData.js';
+import {
+  addCommentOnline,
+  bumpHeartsOnline,
+  bumpReactionOnline,
+  clearAllOnline,
+  createConfessionOnline,
+  deleteCommentOnline,
+  deleteConfessionOnline,
+  isOnlineMode,
+  subscribeConfessions,
+  togglePinOnline,
+  updateConfessionOnline,
+} from './lib/confessionStore.js';
+import { isFirebaseConfigured } from './lib/firebase.js';
 import { parseHashTarget } from './utils/shortlink.js';
 
 const STORAGE_KEY = 'love12b2_confessions_v1';
@@ -40,6 +54,32 @@ export default function App() {
   const [state, setState] = useState(loadInitial);
   const { confessions, siteContent } = state;
 
+  /* Chế độ online (Firebase) hay demo local */
+  const [online, setOnline] = useState(() => isFirebaseConfigured);
+  const [syncError, setSyncError] = useState('');
+  const [syncing, setSyncing] = useState(false);
+
+  /* Bật realtime Firestore khi đã cấu hình: ai gửi là mọi máy thấy ngay */
+  useEffect(() => {
+    if (!isOnlineMode()) {
+      setOnline(false);
+      return;
+    }
+    setOnline(true);
+    const unsub = subscribeConfessions(
+      (list) => {
+        setState((s) => ({ ...s, confessions: list.map(withReactions) }));
+        setSyncError('');
+      },
+      (err) => {
+        console.error('[Love12B2] Firestore sync lỗi:', err);
+        setSyncError('Không đồng bộ được dữ liệu online — đang dùng dữ liệu local.');
+        setOnline(false);
+      }
+    );
+    return () => unsub();
+  }, []);
+
   /* Định tuyến hash đơn giản: '' → trang chủ, '#/admin' → trang quản trị riêng */
   const [route, setRoute] = useState(() =>
     window.location.hash.startsWith('#/admin') ? 'admin' : 'home'
@@ -71,8 +111,9 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  /* Persist demo data */
+  /* Persist demo data (chỉ khi ở chế độ local) */
   useEffect(() => {
+    if (isOnlineMode()) return; // online: Firestore là nguồn sự thật duy nhất
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
@@ -80,14 +121,25 @@ export default function App() {
     }
   }, [state]);
 
-  /* ============ Hành động trên confession ============ */
+  /* ============ Hành động trên confession (online → Firestore, offline → local) ============ */
   const addConfession = useCallback(({ content, topic, author }) => {
+    const icon = CUTE_ICONS[Math.floor(Math.random() * CUTE_ICONS.length)];
+    if (isOnlineMode()) {
+      setSyncing(true);
+      createConfessionOnline({ content, topic, author, icon })
+        .catch((err) => {
+          console.error('[Love12B2] Gửi confession lỗi:', err);
+          setSyncError('Gửi bài thất bại — kiểm tra mạng / Firestore rules nhé.');
+        })
+        .finally(() => setSyncing(false));
+      return; // realtime listener sẽ tự thêm bài mới vào feed
+    }
     setState((s) => {
       const next = {
         id: Date.now(),
         author,
         topic,
-        icon: CUTE_ICONS[Math.floor(Math.random() * CUTE_ICONS.length)],
+        icon,
         content,
         hearts: 0,
         reactions: emptyReactions(),
@@ -100,6 +152,13 @@ export default function App() {
   }, []);
 
   const toggleHeart = useCallback((id, liked) => {
+    if (isOnlineMode()) {
+      bumpHeartsOnline(id, liked ? 1 : -1).catch((err) => {
+        console.error('[Love12B2] Thả tim lỗi:', err);
+        setSyncError('Thả tim thất bại — thử lại nhé.');
+      });
+      // lạc quan: cập nhật UI ngay, realtime sẽ đồng bộ lại
+    }
     setState((s) => ({
       ...s,
       confessions: s.confessions.map((c) =>
@@ -109,6 +168,11 @@ export default function App() {
   }, []);
 
   const addReaction = useCallback((id, reactionId) => {
+    if (isOnlineMode()) {
+      bumpReactionOnline(id, reactionId).catch((err) =>
+        console.error('[Love12B2] Reaction lỗi:', err)
+      );
+    }
     setState((s) => ({
       ...s,
       confessions: s.confessions.map((c) =>
@@ -120,6 +184,11 @@ export default function App() {
   }, []);
 
   const updateConfessionContent = useCallback((id, content) => {
+    if (isOnlineMode()) {
+      updateConfessionOnline(id, { content }).catch((err) =>
+        console.error('[Love12B2] Sửa bài lỗi:', err)
+      );
+    }
     setState((s) => ({
       ...s,
       confessions: s.confessions.map((c) => (c.id === id ? { ...c, content } : c)),
@@ -127,6 +196,12 @@ export default function App() {
   }, []);
 
   const addComment = useCallback((id, comment) => {
+    if (isOnlineMode()) {
+      addCommentOnline(id, comment).catch((err) => {
+        console.error('[Love12B2] Bình luận lỗi:', err);
+        setSyncError('Gửi bình luận thất bại — thử lại nhé.');
+      });
+    }
     setState((s) => ({
       ...s,
       confessions: s.confessions.map((c) =>
@@ -149,6 +224,11 @@ export default function App() {
 
   /* ============ Hành động của Admin ============ */
   const adminUpdateConfession = useCallback((id, patch) => {
+    if (isOnlineMode()) {
+      updateConfessionOnline(id, patch).catch((err) =>
+        console.error('[Love12B2] Admin sửa lỗi:', err)
+      );
+    }
     setState((s) => ({
       ...s,
       confessions: s.confessions.map((c) => (c.id === id ? { ...c, ...patch } : c)),
@@ -156,17 +236,36 @@ export default function App() {
   }, []);
 
   const adminDeleteConfession = useCallback((id) => {
+    if (isOnlineMode()) {
+      deleteConfessionOnline(id).catch((err) =>
+        console.error('[Love12B2] Admin xoá lỗi:', err)
+      );
+    }
     setState((s) => ({ ...s, confessions: s.confessions.filter((c) => c.id !== id) }));
   }, []);
 
-  const adminTogglePin = useCallback((id) => {
-    setState((s) => ({
-      ...s,
-      confessions: s.confessions.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)),
-    }));
-  }, []);
+  const adminTogglePin = useCallback(
+    (id) => {
+      const target = confessions.find((c) => c.id === id);
+      if (isOnlineMode()) {
+        togglePinOnline(id, !(target?.pinned ?? false)).catch((err) =>
+          console.error('[Love12B2] Ghim bài lỗi:', err)
+        );
+      }
+      setState((s) => ({
+        ...s,
+        confessions: s.confessions.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)),
+      }));
+    },
+    [confessions]
+  );
 
   const adminResetHearts = useCallback((id) => {
+    if (isOnlineMode()) {
+      updateConfessionOnline(id, { hearts: 0 }).catch((err) =>
+        console.error('[Love12B2] Reset tim lỗi:', err)
+      );
+    }
     setState((s) => ({
       ...s,
       confessions: s.confessions.map((c) => (c.id === id ? { ...c, hearts: 0 } : c)),
@@ -174,6 +273,11 @@ export default function App() {
   }, []);
 
   const adminDeleteComment = useCallback((confessionId, commentId) => {
+    if (isOnlineMode()) {
+      deleteCommentOnline(confessionId, commentId).catch((err) =>
+        console.error('[Love12B2] Xoá bình luận lỗi:', err)
+      );
+    }
     setState((s) => ({
       ...s,
       confessions: s.confessions.map((c) =>
@@ -188,12 +292,16 @@ export default function App() {
     setState((s) => ({ ...s, siteContent: { ...s.siteContent, ...patch } }));
   }, []);
 
-  const adminRestoreMock = useCallback(() => {
-    setState((s) => ({ ...s, confessions: MOCK_CONFESSIONS }));
+  const adminClearAll = useCallback(() => {
+    if (isOnlineMode()) {
+      clearAllOnline().catch((err) => console.error('[Love12B2] Xoá all lỗi:', err));
+    }
+    setState((s) => ({ ...s, confessions: [] }));
   }, []);
 
-  const adminClearAll = useCallback(() => {
-    setState((s) => ({ ...s, confessions: [] }));
+  const adminRestoreMock = useCallback(() => {
+    // Chế độ online: không seed mock lên cloud (tránh rác dữ liệu thật)
+    setState((s) => ({ ...s, confessions: MOCK_CONFESSIONS.map(withReactions) }));
   }, []);
 
   /* Ghim confession luôn lên đầu feed */
@@ -264,6 +372,26 @@ export default function App() {
         onGoAdmin={goAdmin}
         onGoHome={goHome}
       />
+
+      {/* Banner trạng thái đồng bộ */}
+      {online ? (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
+          <div className="glass-soft flex items-center justify-center gap-2 px-3 py-2 text-center text-xs font-bold text-emerald-600">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            ☁️ Đang online — confession mọi người gửi sẽ tự lưu & hiện realtime cho tất cả
+            {syncing && ' · ⏳ đang gửi…'}
+          </div>
+        </div>
+      ) : (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
+          <div className="glass-soft flex items-center justify-center gap-2 px-3 py-2 text-center text-xs font-bold text-amber-600">
+            💾 {syncError || 'Chế độ demo local — điền Firebase config (src/lib/firebase.js) để bật online.'}
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
