@@ -58,3 +58,4 @@ src/
 - **Bộ Lọc Từ Khóa Văn Minh**: chặn SĐT/email/địa chỉ 🚫, cảnh báo từ toxic ⚠️
 - Responsive: 1 cột (mobile) → sidebar + Masonry 3 cột (desktop)
 - Demo lưu dữ liệu vào `localStorage` trình duyệt (không gửi lên server — đúng cam kết ẩn danh)
+# love12b2-confession
