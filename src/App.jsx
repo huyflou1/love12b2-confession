@@ -4,6 +4,7 @@ import ConfessionFeed from './components/ConfessionFeed.jsx';
 import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import AdminPage from './pages/AdminPage.jsx';
+import RandomConfessionWidget from './components/RandomConfessionWidget.jsx';
 import { CUTE_ICONS, DEFAULT_SITE_CONTENT, MOCK_CONFESSIONS, emptyReactions, seedReactions } from './data/mockData.js';
 import {
   addCommentOnline,
@@ -395,27 +396,20 @@ export default function App() {
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          {/* ===== Cột trái: Composer + ô đăng nhập admin gọn ===== */}
-          <div id="composer" className="space-y-6 lg:col-span-4">
-            <ConfessionComposer
-              onSubmit={addConfession}
-              heroTitle={siteContent.heroTitle}
-              heroSubtitle={siteContent.heroSubtitle}
-            />
+          {/* ===== Cột trái: Widget danh ngôn ngẫu nhiên ===== */}
+          <div className="space-y-6">
+            <RandomConfessionWidget confessions={confessions} />
+
             <section className="glass-card overflow-hidden">
               <div className="bg-gradient-to-r from-violet-500 via-fuchsia-400 to-sky-400 px-5 py-3 text-white">
-                <h2 className="text-base font-bold sm:text-lg">🛡️ Bảng điều khiển Admin</h2>
-                <p className="text-xs text-white/90">Đăng nhập để mở trang quản trị riêng</p>
+                <h2 className="text-base font-bold sm:text-lg">✏️ Viết ẩn danh</h2>
+                <p className="text-xs text-white/90">Đừng sợ — 100% ẩn danh, chỉ để vội lòng thoải mái</p>
               </div>
-              <div className="p-5">
-                <p className="mb-3 text-xs font-semibold text-slate-500">
-                  Chỉnh sửa & xoá toàn bộ nội dung, chuyển đổi linh hoạt 5 tab quản lý trong trang
-                  riêng chuyên nghiệp.
-                </p>
-                <button onClick={goAdmin} className="btn-gradient w-full">
-                  🔓 Mở trang quản trị
-                </button>
-              </div>
+              <ConfessionComposer
+                onSubmit={addConfession}
+                heroTitle={siteContent.heroTitle}
+                heroSubtitle={siteContent.heroSubtitle}
+              />
             </section>
           </div>
 
