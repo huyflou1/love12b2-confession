@@ -27,34 +27,69 @@ export const copyToClipboard = async (text) => {
   }
 };
 
-/** Mở cửa sổ chia sẻ Facebook */
-export const shareFacebook = (url, quote) => {
-  const fb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(quote)}`;
-  window.open(fb, '_blank', 'noopener,noreferrer,width=680,height=560');
+/** Tạo nội dung chia sẻ đẹp kèm trích dẫn + link */
+export const formatSharePayload = (url, quote, id) => {
+  const trimmed = (quote || '').trim();
+  const excerpt = trimmed.length > 180 ? `${trimmed.slice(0, 180)}…` : trimmed;
+  return `💌 Love12B2 Confession ${id ? `#${id}` : ''}\n“${excerpt}”\n👉 Xem tại: ${url}`;
 };
 
 /**
- * TikTok không có web-share API → chiến lược: copy link + gợi ý dán vào caption,
- * đồng thời mở TikTok web (nếu người dùng đang ở mobile sẽ chuyển sang app).
+ * Mở cửa sổ chia sẻ Facebook ổn định:
+ * - Tự động copy sẵn nội dung + link vào clipboard (phòng trường hợp Facebook chặn quote hoặc chạy localhost)
+ * - Nếu URL là localhost/127.0.0.1 (Facebook từ chối scrape), dùng domain public fallback để hộp thoại FB luôn mở mượt
  */
-export const shareTikTok = async (url, quote) => {
-  const payload = `${quote.slice(0, 120)}…\n${url}`;
+export const shareFacebook = async (url, quote, id) => {
+  const payload = formatSharePayload(url, quote, id);
+  await copyToClipboard(payload);
+
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.|10\.)/i.test(url);
+  const targetUrl = isLocal
+    ? 'https://github.com/huyflou1/love12b2-confession'
+    : url;
+
+  const fb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(targetUrl)}&quote=${encodeURIComponent(payload)}`;
+  window.open(fb, '_blank', 'noopener,noreferrer,width=680,height=560');
+  return true;
+};
+
+/**
+ * Chia sẻ TikTok: copy sẵn caption + link vào clipboard rồi mở TikTok.
+ */
+export const shareTikTok = async (url, quote, id) => {
+  const payload = `${formatSharePayload(url, quote, id)}\n#Love12B2 #Confession`;
   const copied = await copyToClipboard(payload);
   window.open('https://www.tiktok.com/upload', '_blank', 'noopener,noreferrer');
   return copied;
 };
 
-/** Dùng Web Share API nếu thiết bị hỗ trợ (mobile) */
-export const shareNative = async (url, quote) => {
+/**
+ * Chia sẻ Messenger: copy sẵn nội dung + link rồi mở Messenger.
+ */
+export const shareMessenger = async (url, quote, id) => {
+  const payload = formatSharePayload(url, quote, id);
+  const copied = await copyToClipboard(payload);
+  window.open('https://www.messenger.com/', '_blank', 'noopener,noreferrer');
+  return copied;
+};
+
+/** Dùng Web Share API nếu thiết bị hỗ trợ (mobile/Windows Share), fallback copy */
+export const shareNative = async (url, quote, id) => {
+  const payload = formatSharePayload(url, quote, id);
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'Love12B2 Confession', text: quote, url });
+      await navigator.share({
+        title: `Love12B2 Confession ${id ? `#${id}` : ''}`,
+        text: `“${quote}”`,
+        url,
+      });
       return 'shared';
     } catch {
       return 'cancelled';
     }
   }
-  return copyToClipboard(url);
+  await copyToClipboard(payload);
+  return 'copied';
 };
 
 /** Định dạng thời gian kiểu "3 giờ trước" */

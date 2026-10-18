@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { topicOf } from '../data/mockData.js';
 import { buildShortUrl } from '../utils/shortlink.js';
-import { copyToClipboard, shareFacebook, shareNative, shareTikTok } from '../utils/share.js';
+import {
+  copyToClipboard,
+  formatSharePayload,
+  shareFacebook,
+  shareMessenger,
+  shareNative,
+  shareTikTok,
+} from '../utils/share.js';
 
 const MessengerIcon = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
@@ -32,6 +39,7 @@ const LinkIcon = () => (
  */
 export default function ShareModal({ confession, onClose }) {
   const [copied, setCopied] = useState(false);
+  const [notice, setNotice] = useState('');
   const shortUrl = buildShortUrl(confession.id);
   const topic = topicOf(confession.topic);
 
@@ -47,7 +55,13 @@ export default function ShareModal({ confession, onClose }) {
   const doCopy = async () => {
     const ok = await copyToClipboard(shortUrl);
     setCopied(ok);
+    setNotice('✅ Đã sao chép link ngắn vào bộ nhớ tạm!');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const doCopyFull = async () => {
+    await copyToClipboard(formatSharePayload(shortUrl, confession.content, confession.id));
+    setNotice('✅ Đã chép trọn bộ nội dung + link! Dán ngay lên Story/Status nhé 💗');
   };
 
   return (
@@ -78,7 +92,7 @@ export default function ShareModal({ confession, onClose }) {
         <p className="mb-3 line-clamp-2 text-sm italic text-slate-500">“{confession.content}”</p>
 
         <p className="label-cute">✨ Link ngắn riêng của bài viết</p>
-        <div className="mb-3 flex items-center gap-1.5">
+        <div className="mb-2 flex items-center gap-1.5">
           <input
             readOnly
             value={shortUrl}
@@ -90,30 +104,46 @@ export default function ShareModal({ confession, onClose }) {
           </button>
         </div>
 
+        <button
+          type="button"
+          onClick={doCopyFull}
+          className="mb-3 w-full rounded-xl border border-violet-200 bg-violet-50/70 py-1.5 text-xs font-bold text-violet-600 transition hover:bg-violet-100"
+        >
+          📝 Copy cả lời tâm sự + link (để dán Story / Status)
+        </button>
+
+        {notice && (
+          <div className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-center text-xs font-bold text-emerald-600">
+            {notice}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => {
-              shareFacebook(shortUrl, confession.content);
-              onClose();
+            type="button"
+            onClick={async () => {
+              await shareFacebook(shortUrl, confession.content, confession.id);
+              setNotice('📘 Đã mở Facebook & tự chép sẵn nội dung (bấm Ctrl+V để dán)!');
             }}
             className="flex items-center justify-center gap-1.5 rounded-xl bg-[#1877F2]/10 py-2.5 text-xs font-bold text-[#1877F2] transition hover:bg-[#1877F2]/20"
           >
             <FacebookIcon /> Facebook
           </button>
           <button
+            type="button"
             onClick={async () => {
-              await shareTikTok(shortUrl, confession.content);
-              onClose();
+              await shareTikTok(shortUrl, confession.content, confession.id);
+              setNotice('🎵 Đã copy caption + link & mở TikTok (dán Ctrl+V vào mô tả)!');
             }}
             className="flex items-center justify-center gap-1.5 rounded-xl bg-black/10 py-2.5 text-xs font-bold text-black transition hover:bg-black/20"
           >
             <TikTokIcon /> TikTok
           </button>
           <button
+            type="button"
             onClick={async () => {
-              await copyToClipboard(shortUrl);
-              window.open('https://www.messenger.com/', '_blank', 'noopener,noreferrer');
-              onClose();
+              await shareMessenger(shortUrl, confession.content, confession.id);
+              setNotice('💬 Đã copy nội dung + link & mở Messenger!');
             }}
             title="Sao chép link rồi mở Messenger để dán"
             className="flex items-center justify-center gap-1.5 rounded-xl bg-violet-500/10 py-2.5 text-xs font-bold text-violet-600 transition hover:bg-violet-500/20"
@@ -121,9 +151,12 @@ export default function ShareModal({ confession, onClose }) {
             <MessengerIcon /> Messenger
           </button>
           <button
+            type="button"
             onClick={async () => {
-              await shareNative(shortUrl, confession.content);
-              onClose();
+              const res = await shareNative(shortUrl, confession.content, confession.id);
+              if (res === 'copied') {
+                setNotice('📲 Đã copy nội dung + link vào bộ nhớ tạm!');
+              }
             }}
             className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/10 py-2.5 text-xs font-bold text-emerald-600 transition hover:bg-emerald-500/20"
           >

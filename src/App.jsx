@@ -396,21 +396,15 @@ export default function App() {
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          {/* ===== Cột trái: Widget danh ngôn ngẫu nhiên ===== */}
-          <div className="space-y-6">
-            <RandomConfessionWidget confessions={confessions} />
+          {/* ===== Cột trái (bên hông): Khung gửi ẩn danh + Widget danh ngôn ngẫu nhiên ===== */}
+          <div className="space-y-6 lg:col-span-4">
+            <ConfessionComposer
+              onSubmit={addConfession}
+              heroTitle={siteContent.heroTitle}
+              heroSubtitle={siteContent.heroSubtitle}
+            />
 
-            <section className="glass-card overflow-hidden">
-              <div className="bg-gradient-to-r from-violet-500 via-fuchsia-400 to-sky-400 px-5 py-3 text-white">
-                <h2 className="text-base font-bold sm:text-lg">✏️ Viết ẩn danh</h2>
-                <p className="text-xs text-white/90">Đừng sợ — 100% ẩn danh, chỉ để vội lòng thoải mái</p>
-              </div>
-              <ConfessionComposer
-                onSubmit={addConfession}
-                heroTitle={siteContent.heroTitle}
-                heroSubtitle={siteContent.heroSubtitle}
-              />
-            </section>
+            <RandomConfessionWidget />
           </div>
 
           {/* ===== Cột phải: Feed masonry ===== */}

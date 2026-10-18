@@ -4,6 +4,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   increment,
   limit,
@@ -73,7 +74,6 @@ export const createConfessionOnline = async ({ content, topic, author, icon }) =
 
 /** +1 / -1 tim */
 export const bumpHeartsOnline = async (id, delta) => {
-  const { getDoc, updateDoc } = await import('firebase/firestore');
   const ref = doc(db, CONFESSIONS, String(id));
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
@@ -82,7 +82,6 @@ export const bumpHeartsOnline = async (id, delta) => {
 
 /** +1 một emoji reaction */
 export const bumpReactionOnline = async (id, reactionId) => {
-  const { getDoc, updateDoc, increment } = await import('firebase/firestore');
   const ref = doc(db, CONFESSIONS, String(id));
   await updateDoc(ref, { [`reactions.${reactionId}`]: increment(1) });
 };
@@ -116,7 +115,6 @@ export const addCommentOnline = async (id, { content, author }) => {
 
 /** Xoá bình luận (admin): đọc → lọc → ghi lại */
 export const deleteCommentOnline = async (confessionId, commentId) => {
-  const { getDoc } = await import('firebase/firestore');
   const ref = doc(db, CONFESSIONS, String(confessionId));
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
@@ -130,4 +128,3 @@ export const clearAllOnline = async () => {
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 };
 
-export { arrayRemove };
